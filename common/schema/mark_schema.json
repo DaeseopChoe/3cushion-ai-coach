@@ -1,0 +1,25 @@
+{
+"$schema": "http://json-schema.org/draft-07/schema#",
+"title": "Mark Schema v1.2 (Extended Fg)",
+"type": "object",
+"properties": {
+"space": {"type": "string", "enum": ["Fg", "Rg"]},
+"rail": {"type": "string", "enum": ["TOP", "BOTTOM", "LEFT", "RIGHT"]},
+"axis": {"type": "string", "enum": ["long", "short"]},
+"value": {"type": "number"}
+},
+"required": ["space", "rail", "axis", "value"],
+"additionalProperties": false,
+"oneOf": [
+{"title": "Rg ranges", "properties": {"space": {"const": "Rg"}},
+"anyOf": [
+{"properties": {"axis": {"const": "long"}, "value": {"minimum": 0, "maximum": 80}}},
+{"properties": {"axis": {"const": "short"}, "value": {"minimum": 0, "maximum": 40}}}
+]},
+{"title": "Fg ranges (extended)", "properties": {"space": {"const": "Fg"}},
+"anyOf": [
+{"properties": {"axis": {"const": "long"}, "value": {"minimum": -2.6, "maximum": 82.6}}},
+{"properties": {"axis": {"const": "short"}, "value": {"minimum": -2.6, "maximum": 42.6}}}
+]}
+]
+}

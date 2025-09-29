@@ -1,0 +1,43 @@
+# Logic Manual Template
+
+## System Name
+[시스템 이름을 입력]
+
+## Purpose
+[이 시스템의 목적과 사용 상황 설명]
+
+## Global Rules Reference
+- FG/RG 계산 원칙: 모든 계산 및 시뮬레이션은 FG(프레임 눈금)/RG(레일 눈금) 기준으로 수행.
+- FP/RP는 해설 및 라벨링에만 사용.
+- FG <-> RG 변환 규칙 적용 (국제 대대 규격, 쿠션 끝~포인트: 90mm, 1레일 눈금: 35.55mm).
+
+## Required Parameters
+- CO (출발값, FG)
+- 1쿠션 값 (FG)
+- 3쿠션 도착 값 (FG)
+- 회전(HPn 또는 타점 표기)
+- 두께(1/8~8/8)
+- 속도 보정 값
+
+## Calculation Formula
+[이 시스템의 핵심 공식과 단계별 계산 절차 작성]
+
+## Spin & Tip Rules
+- 회전: 좌/우 횡비틀기
+- 당점: 공의 중심 기준 상하 위치
+- 타점: 당점 + 회전의 조합
+- 기본 회전 규칙: (예시) 1팁 = 12시45분, 2팁 = 1시30분, 3팁 = 2시15분, 4팁 = 3시 정각
+
+## Thickness & Separation Angles
+- 두께별 분리각 표 참고
+- 속도 조정에 따른 보정 규칙
+
+## Step-by-Step Example
+1. 입력값: CO=xx, 3쿠션=yy, 회전=oo, 두께=tt
+2. FG<->RG 변환
+3. 공식 적용
+4. 1쿠션 값 계산
+5. 시뮬레이션 경로 확인
+
+## Notes
+[특수 상황, 보정 규칙, 예외 처리 등]

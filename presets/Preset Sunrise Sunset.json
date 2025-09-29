@@ -1,0 +1,31 @@
+{
+  "system": "Sunrise–Sunset",
+  "formula": "CO_f + 1C_f + 3C_r = HP_n",
+  "value_domains": {
+    "my_ball_tip": [-5,-4,-3,-2,-1,0,1,2,3,4,5,6],
+    "first_cushion_tip": [-4,-3,-2,-1,0,1,2,3,4],
+    "third_cushion_tip": [-2,-1,0,1,2,3,4],
+    "correction": [0, -1, -1.5, -2]
+  },
+  "safety": {
+    "tip_range": [-4.0, 4.0],
+    "correction_only_negative": true,
+    "offset_fg2rg": 2.25,
+    "fg_extension_long": 2.25,
+    "fg_extension_short": 2.25,
+    "m_min": 0.05,
+    "theta_t_max": 68,
+    "no_extrapolation": true
+  },
+  "space_rule": {
+    "frame_constants": [-2.25, 42.25, 82.25],
+    "tolerance": 0.02,
+    "rule": "if x or y matches frame_constants => Fg, else Rg"
+  },
+  "mappings": null,
+  "meta": {
+    "version": "1.0",
+    "generator": "profile_template_generator.py",
+    "no_preset_autofill": true
+  }
+}

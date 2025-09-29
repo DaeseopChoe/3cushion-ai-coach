@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ball Schema v1.0",
+  "type": "object",
+  "properties": {
+    "type": { "const": "Ball" },
+    "x": { "type": "number", "minimum": 0.5, "maximum": 79.5 },
+    "y": { "type": "number", "minimum": 0.5, "maximum": 39.5 }
+  },
+  "required": ["type", "x", "y"],
+  "additionalProperties": false
+}

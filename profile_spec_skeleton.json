@@ -1,0 +1,9 @@
+@@
+"meta": {
+- "version": "1.0",
+- "generator": "profile_template_generator.py"
++ "version": "1.0",
++ "generator": "profile_template_generator.py",
++ "no_preset_autofill": true
+}
+}

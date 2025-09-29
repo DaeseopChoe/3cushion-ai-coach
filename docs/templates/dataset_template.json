@@ -1,0 +1,29 @@
+{
+"meta": {
+"system": "TBD_System_Name",
+"version": "v1-common",
+"notes": [
+"모든 방정식은 calc-space에서 수행 (오프셋/투영 미적용)",
+"출력은 Mark(Fg/Rg)로 기록",
+"표시는 display_mode로 제어(parallel_frame | rail_projection | both)"
+]
+},
+"units": {
+"points": "Fg/Rg (0–80 / 0–40)",
+"length_per_rail_division_mm": 35.55,
+"frame_to_rail_offset_mm": 90.0,
+"frame_to_rail_offset_divisions": 2.533
+},
+"render_rules": {
+"display_mode": "rail_projection",
+"offset_fg2rg": 2.533,
+"projection": {
+"long": "x_rg = x_fg ± offset/m",
+"short": "y_rg = y_fg ± m*offset"
+},
+"parallel_frame": {
+"note": "x_fg==x_rg (long), y_fg==y_rg (short) — 숫자 동일"
+},
+"safety": {"m_min": 0.05, "theta_t_max_deg": 68, "no_extrapolation": true}
+}
+}

@@ -1,0 +1,44 @@
+{
+"$schema": "https://json-schema.org/draft/2020-12/schema",
+"title": "Anchors Schema (Direct 4-Track)",
+"type": "object",
+"$defs": {
+"anchorId": {
+"type": "string",
+"pattern": "^([A-Z0-9]+)_\(([-+]?\d+(?:\.\d+)?),([-+]?\d+(?:\.\d+)?)\)_([-+]?\d+(?:\.\d+)?)$"
+},
+"track": {
+"type": "object",
+"required": ["anchors"],
+"properties": {
+"anchors": {
+"type": "array",
+"items": {
+"type": "object",
+"required": ["id"],
+"properties": { "id": {"$ref": "#/$defs/anchorId"} },
+"additionalProperties": true
+},
+"minItems": 1
+},
+"meta": { "type": "object", "additionalProperties": true }
+},
+"additionalProperties": false
+}
+},
+"required": ["trajectories"],
+"properties": {
+"lookup_table": { "type": "object", "additionalProperties": true },
+"trajectories": {
+"type": "object",
+"required": ["B2T_L", "B2T_R", "T2B_R", "T2B_L"],
+"properties": {
+"B2T_L": {"$ref": "#/$defs/track"},
+"B2T_R": {"$ref": "#/$defs/track"},
+"T2B_R": {"$ref": "#/$defs/track"},
+"T2B_L": {"$ref": "#/$defs/track"}
+},
+"additionalProperties": false
+}
+}
+}

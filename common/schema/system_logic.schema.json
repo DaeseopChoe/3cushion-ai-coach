@@ -1,0 +1,28 @@
+{
+"$schema": "https://json-schema.org/draft/2020-12/schema",
+"title": "System Logic Schema",
+"type": "object",
+"required": ["track_selection"],
+"properties": {
+"track_selection": {
+"type": "object",
+"required": ["strategy"],
+"properties": {
+"strategy": {"enum": ["ruleset", "model"]},
+"tolerance": {"type": "number"},
+"ruleset": {
+"type": "array",
+"items": {
+"type": "object",
+"properties": {"if": {"type": "string"}, "then": {"type": "string"}},
+"required": ["if", "then"]
+}
+}
+},
+"additionalProperties": true
+},
+"required_marks": {"type": "array", "items": {"type": "string"}},
+"hp_policy": {"type": "object", "additionalProperties": true}
+},
+"additionalProperties": false
+}

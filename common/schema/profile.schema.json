@@ -1,0 +1,29 @@
+{
+"$schema": "https://json-schema.org/draft/2020-12/schema",
+"title": "Profile Schema",
+"type": "object",
+"required": ["system", "formula", "value_domains", "safety", "space_rule"],
+"properties": {
+"system": {"type": "string"},
+"formula": {
+"oneOf": [
+{"type": "string"},
+{"type": "object", "required": ["expr"], "properties": {"expr": {"type": "string"}}}
+]
+},
+"value_domains": {"type": "object"},
+"safety": {"type": "object"},
+"space_rule": {"type": "object"},
+"mappings": {"type": ["object", "null"]},
+"meta": {
+"type": "object",
+"properties": {
+"version": {"type": "string"},
+"generator": {"type": "string"},
+"no_preset_autofill": {"const": true}
+},
+"additionalProperties": true
+}
+},
+"additionalProperties": false
+}
