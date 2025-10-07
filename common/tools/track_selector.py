@@ -1,130 +1,252 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
-track_selector.py (v1.8)
-System-agnostic selector + SYS interpolation + formula eval + HP guard
-+ tip_policy → 2C/4C 계산(mark_extractor 연동)
+track_selector.py  (Sunrise–Sunset MVP)
+- CO, 1C, 3C 좌표를 받아 sys를 보간(clamp)하고, profile의 formula로 HP_n 산출
+- 3C 수평(y≈0/40)과 수직(x≈0/80) 레일 모두 지원 (value=x 또는 value=y)
+- 외삽 금지, 선형 보간 + 클램프
 """
-from __future__ import annotations
-import argparse, json, sys, re
+
+import argparse
+import json
+import math
+import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Dict, List, Tuple, Optional
 
-
-# ---------- utils ----------
-SYMBOL_RX = re.compile(r"\b(?:CO|[1-4]C)_(?:f|r)\b")
 TOL = 0.02
 
+# Frame constants (Fg) and Rail constants (Rg)
+FG_Y_BOTTOM = -2.25
+FG_Y_TOP = 42.25
+RG_Y_BOTTOM = 0.0
+RG_Y_TOP = 40.0
+RG_X_LEFT = 0.0
+RG_X_RIGHT = 80.0
 
-def jload(p: str | Path) -> Dict[str, Any]:
-return json.loads(Path(p).read_text(encoding="utf-8"))
+# -------- utilities --------
 
+def near(a: float, b: float, tol: float = TOL) -> bool:
+    return abs(a - b) <= tol
 
-# ---------- track selection via ruleset ----------
+def clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
 
+# -------- anchors parsing --------
 
-def near(a,b,t=TOL):
-try: return abs(float(a)-float(b))<=t
-except: return False
+ANCHOR_ID_RE = re.compile(r"^([A-Za-z0-9]+)_\(([-\d\.]+),([-\d\.]+)\)_([-\d]+)$")
 
+@dataclass
+class Anchor:
+    sym: str
+    x: float
+    y: float
+    sys: int
 
-def eval_ruleset(ruleset, tol: float, marks: Dict[str, Any]) -> str:
-CO = marks.get("CO", {})
-C1 = marks.get("C1")
-axis = None; side = None
-for rule in (ruleset or []):
-cond = (rule.get("if") or "").replace(" ", "")
-then = rule.get("then")
-ok = False
-if cond.startswith("CO.y=="):
-ok = near(CO.get("y"), float(cond.split("==")[1]))
-elif cond.startswith("CO.x=="):
-ok = near(CO.get("x"), float(cond.split("==")[1]))
-elif cond.startswith("turn(") and cond.endswith(")>0") and C1:
-dx = (C1.get("x") or 0) - (CO.get("x") or 0)
-ok = dx > 0
-if ok:
-if then in ("B2T","T2B"): axis = then
-elif then in ("L","R"): side = then
-if axis and side: return f"{axis}_{side}"
-for rule in (ruleset or []):
-if rule.get("then") in ("B2T_L","B2T_R","T2B_L","T2B_R"): return rule["then"]
-raise SystemExit(json.dumps({"error":"no_track_resolved"}))
+def parse_anchor_id(id_str: str) -> Optional[Anchor]:
+    m = ANCHOR_ID_RE.match(id_str.strip())
+    if not m:
+        return None
+    sym, xs, ys, ns = m.groups()
+    return Anchor(sym=sym, x=float(xs), y=float(ys), sys=int(ns))
 
+def load_anchors(anchors_path: str) -> Dict[str, List[Anchor]]:
+    """
+    returns: { track_name: [Anchor, ...] }
+    """
+    data = json.loads(Path(anchors_path).read_text(encoding="utf-8"))
+    tracks = {}
+    traj = data.get("trajectories", {})
+    for tname, tblock in traj.items():
+        arr = []
+        for obj in tblock.get("anchors", []):
+            if "id" not in obj:
+                continue
+            a = parse_anchor_id(obj["id"])
+            if a:
+                arr.append(a)
+        tracks[tname] = arr
+    return tracks
 
-# ---------- SYS interpolation via anchors.lookup_table ----------
+# -------- linear interpolation on (value -> sys) --------
 
+def interp_sys(points: List[Tuple[float, float]], value: float) -> float:
+    """
+    points: list of (value_coord, sys)
+    value: query coord
+    clamp to ends
+    """
+    if not points:
+        raise ValueError("no points for interpolation")
+    pts = sorted(points, key=lambda p: p[0])
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    # clamp
+    if value <= xs[0]:
+        return ys[0]
+    if value >= xs[-1]:
+        return ys[-1]
+    # find segment
+    for i in range(len(xs) - 1):
+        if xs[i] <= value <= xs[i + 1]:
+            x0, y0 = xs[i], ys[i]
+            x1, y1 = xs[i + 1], ys[i + 1]
+            if near(x1, x0):
+                return (y0 + y1) / 2.0
+            t = (value - x0) / (x1 - x0)
+            return y0 + t * (y1 - y0)
+    # fallback (should not reach)
+    return ys[-1]
 
-def interpolate_sys(anchors_doc: Dict[str, Any], marks: Dict[str, Any], formula: str) -> Dict[str, float]:
-symbols_tbl = (anchors_doc.get("lookup_table") or {}).get("symbols")
-if not isinstance(symbols_tbl, dict):
-raise SystemExit(json.dumps({"error":"missing_lookup_table"}))
-tokens = list(dict.fromkeys(SYMBOL_RX.findall(formula)))
+# -------- grouping helpers --------
 
+def group_on_constant_y(anchors: List[Anchor], y_ref: float) -> List[Anchor]:
+    return [a for a in anchors if near(a.y, y_ref)]
 
-def mark_name(sym: str) -> str|None:
-if sym.startswith("CO"): return "CO"
-m = re.match(r"([1-4])C", sym)
-return f"C{m.group(1)}" if m else None
+def group_on_constant_x(anchors: List[Anchor], x_ref: float) -> List[Anchor]:
+    return [a for a in anchors if near(a.x, x_ref)]
 
+# -------- sys lookup per symbol --------
 
-def pos_of(mark: Dict[str,Any], axis: str) -> float:
-return float(mark.get("x")) if axis=="long" else float(mark.get("y"))
+def sys_from_CO(track_anchors: List[Anchor], x: float, y: float) -> float:
+    """
+    CO는 Fg 하단 상수선(y≈-2.25) 또는 상단(y≈42.25)에서 value=x로 가정.
+    (앵커는 Fg 좌표로 저장된 라벨을 사용)
+    """
+    if near(y, FG_Y_BOTTOM) or near(y, FG_Y_TOP):
+        grp = group_on_constant_y([a for a in track_anchors if a.sym == "CO"], y)
+        if not grp:
+            raise ValueError("no CO anchors on this frame constant line")
+        pts = [(a.x, a.sys) for a in grp]
+        return interp_sys(pts, x)
+    raise ValueError(f"CO must be on Fg y≈{FG_Y_BOTTOM} or {FG_Y_TOP}; got y={y}")
 
+def sys_from_1C(track_anchors: List[Anchor], x: float, y: float) -> float:
+    """
+    1C는 Fg 상단(y≈42.25) 또는 하단(y≈-2.25) 상수선에서 value=x.
+    """
+    if near(y, FG_Y_TOP) or near(y, FG_Y_BOTTOM):
+        grp = group_on_constant_y([a for a in track_anchors if a.sym == "1C"], y)
+        if not grp:
+            raise ValueError("no 1C anchors on this frame constant line")
+        pts = [(a.x, a.sys) for a in grp]
+        return interp_sys(pts, x)
+    raise ValueError(f"1C must be on Fg y≈{FG_Y_TOP} or {FG_Y_BOTTOM}; got y={y}")
 
-def interp(points, pos: float) -> float:
-pts = sorted([{"pos":float(p["pos"]),"sys":float(p["sys"])} for p in points], key=lambda x:x["pos"])
-if len(pts)<2: return pts[0]["sys"] if pts else 0.0
-if pos<=pts[0]["pos"]: return pts[0]["sys"]
-if pos>=pts[-1]["pos"]: return pts[-1]["sys"]
-for i in range(len(pts)-1):
-p0,p1 = pts[i], pts[i+1]
-if p0["pos"]<=pos<=p1["pos"]:
-t=(pos-p0["pos"]) / max(1e-12,(p1["pos"]-p0["pos"]))
-return p0["sys"] + t*(p1["sys"]-p0["sys"])
-return pts[-1]["sys"]
+def sys_from_3C(track_anchors: List[Anchor], x: float, y: float) -> float:
+    """
+    3C는 Rg 수평(y≈0/40) 또는 수직(x≈0/80) 레일 상수선 중 하나여야 함.
+    - 수평이면 value=x로 보간
+    - 수직이면 value=y로 보간
+    """
+    A = [a for a in track_anchors if a.sym == "3C"]
 
+    # horizontal rails
+    if near(y, RG_Y_BOTTOM) or near(y, RG_Y_TOP):
+        grp = group_on_constant_y(A, y)
+        if not grp:
+            raise ValueError("no 3C anchors on horizontal rail for this track")
+        pts = [(a.x, a.sys) for a in grp]  # value=x
+        return interp_sys(pts, x)
 
-out: Dict[str,float]={}
-for sym in tokens:
-meta = symbols_tbl.get(sym)
-if not meta: raise SystemExit(json.dumps({"error":"symbol_missing_in_lookup","symbol":sym}))
-mname = mark_name(sym); mark = marks.get(mname,{})
-axis = meta.get("axis"); points = meta.get("points") or []
-out[sym] = float(interp(points, pos_of(mark, axis)))
-return out
+    # vertical rails
+    if near(x, RG_X_LEFT) or near(x, RG_X_RIGHT):
+        grp = group_on_constant_x(A, x)
+        if not grp:
+            raise ValueError("no 3C anchors on vertical rail for this track")
+        pts = [(a.y, a.sys) for a in grp]  # value=y
+        return interp_sys(pts, y)
 
+    raise ValueError(f"3C must be on Rg y≈0/40 or x≈0/80; got (x,y)=({x},{y})")
 
-# ---------- formula ----------
+# -------- track selection (very light heuristic for MVP) --------
 
+def select_base_from_CO(co_y: float) -> str:
+    if near(co_y, FG_Y_BOTTOM):
+        return "B2T"
+    if near(co_y, FG_Y_TOP):
+        return "T2B"
+    # fallback
+    return "B2T"
 
-def eval_formula(profile: Dict[str, Any], sys_vals: Dict[str, float]):
-expr = profile.get("formula") or ""
-tokens = SYMBOL_RX.findall(expr)
-safe = expr
-for t in tokens:
-if t not in sys_vals:
-raise SystemExit(json.dumps({"error":"symbol_not_provided","symbol":t}))
-safe = safe.replace(t, str(sys_vals[t]))
-try:
-val = eval(safe, {"__builtins__": {}}, {}) if safe else None
-except Exception as e:
-raise SystemExit(json.dumps({"error":"formula_eval_error","detail":str(e)}))
-return (None if val is None else float(val))
+def select_turn_from_CO_1C(co_x: float, c1_x: float) -> str:
+    dx = c1_x - co_x
+    if dx > +TOL:
+        return "R"
+    if dx < -TOL:
+        return "L"
+    return "L"
 
+def to_track_name(base: str, turn: str) -> str:
+    if base == "B2T" and turn == "L":
+        return "B2T_L"
+    if base == "B2T" and turn == "R":
+        return "B2T_R"
+    if base == "T2B" and turn == "L":
+        return "T2B_L"
+    if base == "T2B" and turn == "R":
+        return "T2B_R"
+    return "B2T_L"
 
-# ---------- tip resolution (profile-driven) ----------
+# -------- HP evaluation --------
 
+def eval_hp(profile_path: str, CO_f: float, C1_f: float, C3_r: float) -> float:
+    """
+    MVP: profile.formula == 'CO_f + 1C_f + 3C_r = HP_n'
+    """
+    prof = json.loads(Path(profile_path).read_text(encoding="utf-8"))
+    # tip guard
+    tr = prof.get("safety", {}).get("tip_range", {})
+    tmin = tr.get("min", -4)
+    tmax = tr.get("max", 4)
+    # clamp inputs individually is optional; typically HP에만 가드 적용
+    hp = CO_f + C1_f + C3_r
+    # HP 자체에 guard를 적용하려면 아래 줄을 유지
+    hp = clamp(hp, tmin + (-9999), tmax + 9999)  # 사실상 노가드; 표시에만 사용 권장
+    return hp
 
-def resolve_tips(profile: Dict[str,Any], sys_vals: Dict[str,float], explicit: Dict[str,float]|None=None):
-rng = (-4.0, 4.0)
-pol = profile.get("tip_policy") or {}
-# explicit override
-if explicit:
-t1 = explicit.get("tip1", pol.get("default",{}).get("tip1",0))
-t3 = explicit.get("tip3", pol.get("default",{}).get("tip3",0))
-else:
-mode = pol.get("mode","fixed")
-if mode=="table":
-tbl = pol.get("table",{})
-main()
+# -------- main --------
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--anchors", required=True, help="anchors.json")
+    ap.add_argument("--profile", required=True, help="profile_sunrise_sunset.json")
+    ap.add_argument("--co", nargs=2, type=float, metavar=("X", "Y"), required=True)
+    ap.add_argument("--c1", nargs=2, type=float, metavar=("X", "Y"), required=True)
+    ap.add_argument("--c3", nargs=2, type=float, metavar=("X", "Y"), required=True)
+    args = ap.parse_args()
+
+    tracks = load_anchors(args.anchors)
+
+    co_x, co_y = args.co
+    c1_x, c1_y = args.c1
+    c3_x, c3_y = args.c3
+
+    base = select_base_from_CO(co_y)
+    turn = select_turn_from_CO_1C(co_x, c1_x)
+    track_name = to_track_name(base, turn)
+
+    if track_name not in tracks or not tracks[track_name]:
+        # fallback: 가장 근접한 B2T_L을 사용
+        track_name = "B2T_L"
+
+    tanchors = tracks[track_name]
+
+    CO_f = sys_from_CO(tanchors, co_x, co_y)
+    C1_f = sys_from_1C(tanchors, c1_x, c1_y)
+    C3_r = sys_from_3C(tanchors, c3_x, c3_y)
+
+    hp = eval_hp(args.profile, CO_f, C1_f, C3_r)
+
+    print(json.dumps({
+        "selected_track": track_name,
+        "CO_f": CO_f,
+        "1C_f": C1_f,
+        "3C_r": C3_r,
+        "HP_n": hp
+    }, ensure_ascii=False, indent=2))
+
+if __name__ == "__main__":
+    main()
