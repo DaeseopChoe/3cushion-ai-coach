@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "name": "system_logic",
+    "version": "1.0.0",
+    "created_at": "2025-09-30T09:00:36.506969Z",
+    "spec": "v1.3-extended",
+    "description": "Declarative logic specification to reproduce/verify any 3-cushion system. Used by calculators and validators alongside anchors.json and profile_<system>.json."
+  },
+  "system": {
+    "id": "sunrise_sunset",
+    "label_format": "<ID>_(x,y)_<sys>",
+    "frame_constants": [-2.25, 42.25, 82.25],
+    "rail_constants": [0.0, 40.0, 0.0, 80.0],
+    "tolerance": 0.02,
+    "offset_fg2rg": 2.25
+  },
+  "variables": {
+    "CO": { "space": "Fg", "role": "origin", "tag": "CO_f" },
+    "1C": { "space": "Fg", "role": "first_cushion", "tag": "1C_f" },
+    "2C": { "space": "Rg", "role": "second_cushion", "tag": "2C_r" },
+    "3C": { "space": "Rg", "role": "third_cushion", "tag": "3C_r" }
+  },
+  "formulae": [
+    {
+      "name": "primary_hp",
+      "expression": "CO_f + 1C_f + 3C_r",
+      "result": "HP_n",
+      "notes": "Sunrise–Sunset primary formula. Engines evaluate only left-hand side; result alias is informational."
+    }
+  ],
+  "symmetry": {
+    "tracks": ["B2T_L", "B2T_R", "T2B_L", "T2B_R"],
+    "operators": {
+      "H": { "transform": "(x,y)->(80-x, y)", "maps_to": { "B2T_L": "B2T_R", "T2B_L": "T2B_R", "B2T_R": "B2T_L", "T2B_R": "T2B_L" } },
+      "V": { "transform": "(x,y)->(x, 40-y)", "maps_to": { "B2T_L": "T2B_R", "B2T_R": "T2B_L", "T2B_L": "B2T_R", "T2B_R": "B2T_L" } },
+      "RPI": { "transform": "(x,y)->(80-x, 40-y)", "maps_to": { "B2T_L": "T2B_L", "B2T_R": "T2B_R", "T2B_L": "B2T_L", "T2B_R": "B2T_R" } }
+    },
+    "invariants": ["sys"],
+    "coords_only": true
+  },
+  "track_selection": {
+    "rule_set": "user_defined_v1",
+    "base_determination": {
+      "if": [
+        { "when": "abs(CO.y + 2.25) <= tol", "then": "B2T" },
+        { "when": "abs(CO.y - 42.25) <= tol", "then": "T2B" },
+        { "when": "abs(CO.x - 82.25) <= tol", "then": "B2T" },
+        { "when": "abs(CO.x + 2.25) <= tol", "then": "T2B" }
+      ],
+      "fallback": "B2T"
+    },
+    "turn_determination": {
+      "dx": "1C.x - CO.x",
+      "if": [
+        { "when": "dx > +tol", "then": "R" },
+        { "when": "dx < -tol", "then": "L" }
+      ],
+      "tie_breaker": [
+        { "when": "abs(3C.y - 40.0) <= tol", "set_base": "T2B" },
+        { "when": "abs(3C.y - 0.0) <= tol", "set_base": "B2T" },
+        { "when": "3C.x > CO.x + tol", "then": "R" },
+        { "when": "3C.x < CO.x - tol", "then": "L" },
+        { "default": "L" }
+      ]
+    },
+    "mapping": [
+      { "track": "B2T_L", "when": "(base=='B2T') and (dx < -tol)" },
+      { "track": "B2T_R", "when": "(base=='B2T') and (dx > +tol)" },
+      { "track": "T2B_L", "when": "(base=='T2B') and (dx < -tol)" },
+      { "track": "T2B_R", "when": "(base=='T2B') and (dx > +tol)" }
+    ]
+  },
+  "interpolation": {
+    "strategy": "linear",
+    "domain": "sys",
+    "grouping": "constant-rail",
+    "clamp": true,
+    "no_extrapolation": true,
+    "selection": {
+      "prefer": [
+        "y=const if y near {-2.25,42.25,0,40}",
+        "x=const if x near {-2.25,82.25,0,80}",
+        "else nearest rounded rail"
+      ],
+      "value_dim": "x for horizontal rails, y for vertical rails"
+    }
+  },
+  "render": {
+    "third_cushion_mode": {
+      "negative_sys": "double_rail",
+      "nonnegative_sys": "curved"
+    }
+  },
+  "safety": {
+    "m_min": 0.05,
+    "theta_t_max_deg": 68.0,
+    "no_extrapolation": true
+  },
+  "io": {
+    "requires": ["anchors.json", "profile_<system>.json"],
+    "produces": ["HP_n", "selected_track"],
+    "labels_expected": ["CO", "1C", "3C"]
+  },
+  "pipeline": [
+    "1) Select track from CO/1C/3C coordinates with tolerance.",
+    "2) From anchors.json, fetch sys for CO/1C/3C: exact match else linear interpolation within the constant-rail group (clamp).",
+    "3) Read formula from profile and evaluate with CO_f, 1C_f, 3C_r (others default 0 unless present).",
+    "4) Emit HP_n and selected_track; apply optional correction rules from profile, if defined."
+  ]
+}

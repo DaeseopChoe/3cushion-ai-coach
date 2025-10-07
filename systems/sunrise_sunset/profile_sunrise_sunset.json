@@ -1,0 +1,23 @@
+{
+  "system": "Sunrise–Sunset",
+  "formula": "CO_f + 1C_f + 3C_r = HP_n",
+  "value_domains": {
+    "CO_f": { "min": -10, "max": 60 },
+    "1C_f": { "min": -10, "max": 60 },
+    "3C_r": { "min": -10, "max": 60 }
+  },
+  "safety": {
+    "tip_range": { "min": -4, "max": 4 }
+  },
+  "render": {
+    "third_cushion_mode": {
+      "negative_sys": "double_rail",
+      "nonnegative_sys": "curved"
+    }
+  },
+  "meta": {
+    "version": "1.0",
+    "generator": "profile_template_generator.py",
+    "no_preset_autofill": true
+  }
+}
