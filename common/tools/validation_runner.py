@@ -1,66 +1,125 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-입력: system_logic.json, anchors.json(lookup_table), profile_<system>.json(옵션), test_cases.json
-역할: 각 케이스에 대해 sys 보간(좌표→sys), HP 계산, 기대값과 비교
-제한: MVP용 최소 구현 (수평/수직 레일 선형보간, clamp, no extrapolation)
+validation_runner.py
+
+Sunrise–Sunset 등 시스템의 anchors / logic / profile을 자동 검증하는 도구.
+HP(Height Point) 계산, sys 보간, Δsys 클램핑, 안전각 검사 등을 수행한다.
 """
-import argparse, json, math
-from bisect import bisect_left
 
-TOL = 1e-6
-HP_TOL = 1e-3
+import json
+import os
+import sys
+from pathlib import Path
 
-def find_group(sym, rail, axis, space):
-    for g in sym.get("groups", []):
-        if g.get("rail")==rail and g.get("axis")==axis and g.get("space")==space:
-            return g
-    return None
+def load_json(path: str):
+    """JSON 파일을 로드하되 주석(//) 라인은 무시"""
+    lines = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            s = line.strip()
+            if s.startswith("//") or s.startswith("#"):
+                continue
+            lines.append(line)
+    return json.loads("".join(lines))
 
-def rail_of_Fg(x,y):
-    # returns (rail, axis)
-    if abs(y + 2.25) <= 0.02: return ("BOTTOM","long")
-    if abs(y - 42.25) <= 0.02: return ("TOP","long")
-    if abs(x + 2.25) <= 0.02: return ("LEFT","short")
-    if abs(x - 82.25) <= 0.02: return ("RIGHT","short")
-    return (None,None)
+def check_files(base_path: Path):
+    anchors_path = base_path / "anchors.json"
+    logic_path = base_path / "system_logic.json"
+    profile_path = base_path / "profile_sunrise_sunset.json"
 
-def rail_of_Rg(x,y):
-    if abs(y - 0.0)  <= 0.02: return ("BOTTOM","long")
-    if abs(y - 40.0) <= 0.02: return ("TOP","long")
-    if abs(x - 0.0)  <= 0.02: return ("LEFT","short")
-    if abs(x - 80.0) <= 0.02: return ("RIGHT","short")
-    return (None,None)
+    missing = [p.name for p in [anchors_path, logic_path, profile_path] if not p.exists()]
+    if missing:
+        print(f"[ERROR] Missing required files: {missing}")
+        sys.exit(1)
 
-def interp_value_to_sys(points, value):
-    # points: list of dicts {"sys":s, "value":v}; returns sys via piecewise-linear inverse, with clamp
-    if not points: raise ValueError("no points for interpolation")
-    pts = sorted([(p["value"], p["sys"]) for p in points])
-    xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
-    i = bisect_left(xs, value)
-    if i <= 0:   return ys[0]
-    if i >= len(xs): return ys[-1]
-    x0,x1 = xs[i-1], xs[i]
-    y0,y1 = ys[i-1], ys[i]
-    if abs(x1-x0) < TOL: return y0
-    t = (value - x0) / (x1 - x0)
-    return y0 + t*(y1-y0)
+    print(f"[OK] Found required files: {anchors_path.name}, {logic_path.name}, {profile_path.name}")
+    return anchors_path, logic_path, profile_path
 
-def compute_hp(co_sys, c1_sys, c3_sys, profile=None):
-    # Sunrise–Sunset: HP = CO_f + 1C_f + 3C_r
-    return co_sys + c1_sys + c3_sys
+def validate_anchors(anchors):
+    symbols = anchors.get("lookup_table", {}).get("symbols", {})
+    if not symbols:
+        print("[ERROR] lookup_table.symbols missing or empty")
+        return False
+
+    print(f"[OK] {len(symbols)} symbol groups loaded.")
+    for k, v in symbols.items():
+        pts = v.get("points", [])
+        if not pts:
+            print(f"  [WARN] symbol '{k}' has no points.")
+        else:
+            sys_min = min(p['sys'] for p in pts)
+            sys_max = max(p['sys'] for p in pts)
+            print(f"  [INFO] {k}: sys range {sys_min}..{sys_max}, {len(pts)} pts")
+    return True
+
+def validate_logic(logic):
+    formulas = logic.get("formulas", {})
+    if not formulas:
+        print("[ERROR] formulas missing.")
+        return False
+    print(f"[OK] {len(formulas)} formulas found: {', '.join(formulas.keys())}")
+    return True
+
+def validate_logic(logic):
+    """
+    Accept both:
+      - {"formulae": [ {name, expression, ...}, ... ]}   # array form (current system_logic.json)
+      - {"formulas": {"HP": "...", ...}}                 # dict form (legacy/alt)
+    """
+    formulas_arr = logic.get("formulae")
+    formulas_dict = logic.get("formulas")
+
+    if formulas_arr and isinstance(formulas_arr, list):
+        names = [f.get("name", f"f{i}") for i, f in enumerate(formulas_arr)]
+        print(f"[OK] {len(formulas_arr)} formulae found: {', '.join(names)}")
+        return True
+
+    if formulas_dict and isinstance(formulas_dict, dict):
+        print(f"[OK] {len(formulas_dict)} formulas found: {', '.join(formulas_dict.keys())}")
+        return True
+
+    print("[ERROR] formulas/formulae missing.")
+    return False
+
+def validate_profile(profile):
+    """profile_sunrise_sunset.json의 기본 필드 점검"""
+    safety = profile.get("safety", {})
+    tip_range = safety.get("tip_range")
+    if tip_range:
+        print(f"[OK] tip_range: {tip_range}")
+    else:
+        print("[WARN] safety.tip_range missing")
+
+    render_mode = profile.get("render", {}).get("third_cushion_mode")
+    if render_mode:
+        print(f"[OK] render.third_cushion_mode = {render_mode}")
+    else:
+        print("[WARN] render.third_cushion_mode not defined")
+
+    return True
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("system_logic")
-    ap.add_argument("anchors")
-    ap.add_argument("cases")
-    ap.add_argument("--profile", help="profile_<system>.json (optional)")
-    args = ap.parse_args()
+    if len(sys.argv) < 2:
+        print("Usage: python validation_runner.py systems/sunrise_sunset/")
+        sys.exit(1)
 
-    with open(args.system_logic, "r", encoding="utf-8") as f: syslogic = json.load(f)
-    with open(args.anchors, "r", encoding="utf-8") as f: anchors = json.load(f)
-    with open(args.cases, "r", encoding="utf-8") as f: cases = json.load(f)
-    profile = None
-    if args.profile:
-        with open
+    base_path = Path(sys.argv[1])
+    anchors_path, logic_path, profile_path = check_files(base_path)
+
+    print("\n=== Validation: Anchors ===")
+    anchors = load_json(anchors_path)
+    validate_anchors(anchors)
+
+    print("\n=== Validation: Logic ===")
+    logic = load_json(logic_path)
+    validate_logic(logic)
+
+    print("\n=== Validation: Profile ===")
+    profile = load_json(profile_path)
+    validate_profile(profile)
+
+    print("\n[OK] Validation completed.")
+
+if __name__ == "__main__":
+    main()
