@@ -1,0 +1,20 @@
+
+logic_manual.txt — sys-only + display-space correction
+------------------------------------------------------
+1) Calc-space (sys 전용)
+   - 3C_f = CO_f - 1C_f - Δ_sys
+   - Δ_sys 기본 0.0  (표시는 display-space 보정으로 처리)
+
+2) Display-space (표시 전용)
+   - rail_projection(long): x_rg = x_fg ± (offset/m) − s*δ
+     · offset_fg2rg=2.25 grid
+     · δ 기본 2.0 mm (현장 1.6~2.3 mm 조정)
+     · 61.5mm 공 반영: r=30.75mm (θ-스케일 옵션에서 사용)
+
+3) 파일 경로
+   - simulator.py가 dataset.json, system_logic.json을 **자기 파일 위치 기준**으로 로드
+     (어디서 실행해도 안전하게 동작)
+
+4) 운용 팁
+   - δ 먼저 2.0 mm로 시작 → 코너 근접(CO 45→50)에서 길게 뜨면 2.2 mm로 상향
+   - θ-스케일 옵션을 켜면 코너 구간만 δ가 자동 가중

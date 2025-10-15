@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "version": "1.0",
+    "generator": "3Cushion AI – system_logic template",
+    "space": "sys-only"
+  },
+  "formulas": {
+    "third_cushion_sys": "3C_f = CO_f - 1C_f - Δ_sys",
+    "notes": [
+      "All computations stay in sys (no coordinates, no scales).",
+      "Δ_sys defaults to dataset.calc_rules.delta_comp_grid (0.0 recommended).",
+      "Prefer display-space correction via render_rules.delta_contact_mm."
+    ]
+  },
+  "defaults": {
+    "Δ_sys": 0.0
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "version": "1.0",
+    "generator": "3Cushion AI – display-space δ correction template",
+    "includes": {
+      "anchors": "./anchors.json"
+    },
+    "no_extrapolation": true
+  },
+  "units": {
+    "grid_mm": 35.55,
+    "fg_extension_long": 2.25,
+    "fg_extension_short": 2.25
+  },
+  "render_rules": {
+    "offset_fg2rg": 2.25,
+    "delta_contact_mm": 2.0,
+    "delta_min_mm": 1.6,
+    "delta_max_mm": 2.3,
+    "theta_scale_enabled": false,
+    "theta_min_deg": 10.0,
+    "theta_max_deg": 68.0
+  },
+  "calc_rules": {
+    "delta_comp_grid": 0.0,
+    "no_extrapolation": true
+  }
+}
