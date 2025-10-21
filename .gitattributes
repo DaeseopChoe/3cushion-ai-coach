@@ -1,7 +1,23 @@
-* text=auto
-*.py  text eol=lf
-*.json text eol=lf
-*.md  text eol=lf
-*.yml text eol=lf
-*.bat text eol=crlf
-*.ps1 text eol=crlf
+# =====================================================
+# Git line-ending normalization and system rules
+# =====================================================
+
+# 모든 텍스트 파일은 자동 정규화 (LF 기준)
+*           text=auto eol=lf
+
+# JSON, Python, Markdown, YAML은 LF 고정
+*.py        text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+
+# Windows 실행 스크립트는 CRLF 유지
+*.bat       text eol=crlf
+*.ps1       text eol=crlf
+
+# 바이너리 파일 (Git이 라인엔딩 손대지 않게)
+*.png       binary
+*.jpg       binary
+*.zip       binary
