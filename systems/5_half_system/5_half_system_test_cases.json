@@ -1,0 +1,8 @@
+{
+  "system": "Sunrise–Sunset",
+  "formula": "CO_f + 1C_f + 3C_r = HP_n",
+  "cases": [],
+  "meta": {
+    "generator": "compact_samples_to_lookup_and_cases.py"
+  }
+}

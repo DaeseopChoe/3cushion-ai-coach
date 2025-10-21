@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "version": "v1.3.1",
+    "system_id": "5_half_system",
+    "source": "3Cushion AI MVP",
+    "description": "5&half system — extended to 6C_sys, includes ΔCO baseline correction (CO_sys=50)",
+    "author": "3Cushion AI",
+    "created": "2025-10-09"
+  },
+
+  "render": {
+    "third_cushion_mode": "curved",
+    "double_rail": true,
+    "display_space": "Fg",
+    "theme": "contrast_blue",
+    "scale": {
+      "frame_long": 80,
+      "frame_short": 40
+    },
+    "offset_fg2rg": 2.25
+  },
+
+  "tip_range": {
+    "min": -4,
+    "max": 4,
+    "step": 0.5
+  },
+
+  "system_logic_link": "./5_half_system_logic.json",
+  "anchors_link": "./5_half_system_anchors.json",
+
+  "hp_rules": {
+    "co_baseline": 50,
+    "co_gain": 0.5,
+    "apply_to": ["1C", "3C", "4C", "5C", "6C"],
+    "description": "ΔCO = 0.5 * (CO_sys - 50); applied before HP projection."
+  },
+
+  "display_options": {
+    "show_symmetry_tracks": true,
+    "show_vertical_3C_lines": true,
+    "draw_delta_guides": true,
+    "label_precision": 1
+  },
+
+  "validation": {
+    "guard": {
+      "theta_t_max_deg": 68,
+      "m_min": 0.05,
+      "no_extrapolation": true
+    },
+    "check_required_marks": true
+  }
+}

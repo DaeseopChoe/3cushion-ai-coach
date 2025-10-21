@@ -1,0 +1,95 @@
+{
+  "meta": {
+    "version": "v1.3.1",
+    "system_id": "5_half_system",
+    "generator": "manual+rules_v1.3",
+    "notes": "calc-space uses sys only; display projection happens at render"
+  },
+
+  "system": "5&half",
+
+  "required_marks": ["CO", "1C", "3C", "4C", "5C", "6C"],
+
+  "marks": {
+    "CO": { "tag": "CO_f", "space": "sys", "axis": "long" },
+    "1C": { "tag": "1C_f", "space": "sys", "axis": "long" },
+    "3C": { "tag": "3C_r", "space": "sys", "axis": "long" },
+    "4C": { "tag": "4C_r", "space": "sys", "axis": "short" },
+    "5C": { "tag": "5C_r", "space": "sys", "axis": "long" },
+    "6C": { "tag": "6C_f", "space": "sys", "axis": "long" }
+  },
+
+  "domains": {
+    "sys": {
+      "CO_f": [0, 90],
+      "1C_f": [0, 90],
+      "3C_r": [0, 90],
+      "4C_r": [-20, 90],
+      "5C_r": [20, 90],
+      "6C_f": [20, 90],
+      "infer_from_anchors": true,
+      "clamp": true
+    },
+    "guards": {
+      "no_extrapolation": true,
+      "m_min": 0.05,
+      "theta_t_max_deg": 68
+    }
+  },
+
+  "safety": {
+    "offset_fg2rg": 2.25,
+    "fg_extension_long": 2.25,
+    "fg_extension_short": 2.25
+  },
+
+  "selector": {
+    "third_cushion_mode": "curved",
+    "double_rail": true,
+    "hp_guard": { "enabled": true, "mode": "clamp" }
+  },
+
+  "corrections": {
+    "co_baseline": 50,
+    "co_gain": 0.5,
+    "apply_to": ["HP", "1C", "3C", "4C", "5C", "6C"]
+  },
+
+  "formulas": {
+    "type": "residual+predictive",
+    "residual": "CO_f - (1C_f + 3C_r + w4*4C_r + w5*5C_r + w6*6C_f + dCO) = 0",
+    "primary_hp": "HP_n = a0 + a1*CO_f + b1*1C_f + b3*3C_r + b4*4C_r + b5*5C_r + b6*6C_f + dCO",
+    "terms": {
+      "w4": 0.0,
+      "w5": 0.0,
+      "w6": 0.0,
+      "a0": 0.0,
+      "a1": 0.0,
+      "b1": 1.0,
+      "b3": 1.0,
+      "b4": 0.0,
+      "b5": 0.0,
+      "b6": 0.0
+    },
+    "derived": {
+      "dCO": "co_gain * (CO_f - co_baseline)"
+    },
+    "notes": [
+      "초기값은 Sunrise–Sunset과 구분되는 5&half 기본형(1C+3C)을 유지",
+      "4C/5C/6C는 앵커/케이스 튜닝으로 w4..w6 업데이트",
+      "HP_n은 UI/리포트용 (선택)"
+    ]
+  },
+
+  "interpolation": {
+    "domain": "sys",
+    "method": "linear",
+    "clamp": true
+  },
+
+  "guards": {
+    "reject_example_formulas": true,
+    "example_markers": ["EXAMPLE", "SAMPLE", "PLACEHOLDER"],
+    "allowed_imports": []
+  }
+}
