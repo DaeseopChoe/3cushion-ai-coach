@@ -1,23 +1,64 @@
-# =====================================================
-# Git line-ending normalization and system rules
-# =====================================================
+# =========================
+# 3Cushion AI — .gitattributes (optimized)
+# 목적: OS 혼용 시 라인엔딩/바이너리 안전화 + 리뷰(diff) 품질 향상
+# =========================
 
-# 모든 텍스트 파일은 자동 정규화 (LF 기준)
-*           text=auto eol=lf
+# --- 기본 정책: 텍스트는 LF로 정규화 ---
+*                 text=auto eol=lf
 
-# JSON, Python, Markdown, YAML은 LF 고정
-*.py        text eol=lf
-*.json      text eol=lf
-*.yml       text eol=lf
-*.yaml      text eol=lf
-*.md        text eol=lf
-*.txt       text eol=lf
+# --- 코드/설정/문서: LF 고정 ---
+*.py              text eol=lf
+*.json            text eol=lf
+*.jsonc           text eol=lf
+*.yml             text eol=lf
+*.yaml            text eol=lf
+*.md              text eol=lf
+*.txt             text eol=lf
+*.toml            text eol=lf
+*.ini             text eol=lf
+*.cfg             text eol=lf
+*.sh              text eol=lf
+*.sql             text eol=lf
+.gitattributes    text eol=lf
+.gitignore        text eol=lf
 
-# Windows 실행 스크립트는 CRLF 유지
-*.bat       text eol=crlf
-*.ps1       text eol=crlf
+# --- Windows 네이티브 스크립트: CRLF 유지 ---
+#   systems/*/tasks/ 에서 사용
+*.bat             text eol=crlf
+*.cmd             text eol=crlf
+*.ps1             text eol=crlf
+*.psm1            text eol=crlf
 
-# 바이너리 파일 (Git이 라인엔딩 손대지 않게)
-*.png       binary
-*.jpg       binary
-*.zip       binary
+# --- SVG는 텍스트로 다루되 LF 정규화(이미지 diff 보기 좋게) ---
+*.svg             text eol=lf
+
+# --- 진짜 바이너리: 라인엔딩 건드리지 않음 ---
+*.png             binary
+*.jpg             binary
+*.jpeg            binary
+*.gif             binary
+*.bmp             binary
+*.ico             binary
+*.pdf             binary
+*.zip             binary
+*.7z              binary
+*.tar             binary
+*.gz              binary
+*.rar             binary
+*.pptx            binary
+*.docx            binary
+*.xlsx            binary
+*.ttf             binary
+*.otf             binary
+
+# --- 로그/데이터(사람이 diff 볼 필요 없는 대형 산출물은 바이너리 권장) ---
+*.log             text eol=lf
+*.csv             text eol=lf
+*.tsv             text eol=lf
+*.parquet         binary
+
+# --- 경로별 특수 규칙(선택) ---
+# PowerShell/배치 스크립트가 모인 tasks 폴더는 CRLF 고정
+systems/**/tasks/*.ps1   text eol=crlf
+systems/**/tasks/*.bat   text eol=crlf
+systems/**/tasks/*.cmd   text eol=crlf

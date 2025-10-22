@@ -1,0 +1,43 @@
+{
+  "system": "7_system (Turkish_Angle)",
+  "formula": "1C_f = CO_f * 3C_f",
+  "value_domains": {
+    "co_sys": [1, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8],
+    "first_cushion_sys": [10, 20, 30, 40],
+    "third_cushion_sys": [4, 5, 6, 7, 8, 9, 10],
+    "my_ball_tip": [0],
+    "aim_point": ["center"]
+  },
+  "safety": {
+    "tip_range": [0, 0],
+    "correction_only_negative": false,
+    "offset_fg2rg": 2.25,
+    "fg_extension_long": 2.25,
+    "fg_extension_short": 2.25,
+    "m_min": 0.05,
+    "theta_t_max": 68,
+    "no_extrapolation": true
+  },
+  "space_rule": {
+    "frame_constants": [-2.25, 42.25, 82.25],
+    "tolerance": 0.02,
+    "rule": "if x or y matches frame_constants => Fg, else Rg"
+  },
+  "mappings": null,
+  "meta": {
+    "version": "1.0",
+    "generator": "3Cushion AI",
+    "source": "7_system_base_manual.txt",
+    "notes": [
+      "타점(팁)은 4트랙 모두 정중앙 고정",
+      "수치 계산은 sys 전용(_f/_r 태그 유지)으로 수행",
+      "표시는 필요 시에만 Fg/Rg 투영 사용"
+    ],
+    "track_selection_hint": {
+      "B2T_R": "CO_y=-2.25 or x=82.25, 1C_x=-2.25, 3C_x=82.25이며 CO_y<3C_y",
+      "B2T_L": "CO_y=-2.25 or x=-2.25, 1C_x=82.25, 3C_x=-2.25이며 CO_y<3C_y",
+      "T2B_R": "CO_y=42.25 or x=82.25, 1C_x=82.25, 3C_x=-2.25이며 CO_y>3C_y",
+      "T2B_L": "CO_y=42.25 or x=82.25, 1C_x=-2.25, 3C_x=82.25이며 CO_y>3C_y"
+    }
+  }
+}

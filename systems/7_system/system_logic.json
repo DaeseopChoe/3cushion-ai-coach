@@ -1,0 +1,137 @@
+{
+  "system": "7_system (Seven System)",
+  "version": "1.1",
+  "meta": {
+    "generator": "3Cushion AI",
+    "source": "7_seven_system_logic_manual.txt",
+    "rule_version": "v1.3",
+    "last_updated": "2025-10-21T00:00:00Z"
+  },
+
+  "formula": "1C_f = CO_f * 3C_f",
+  "calc_pipeline": {
+    "description": "CO_sys와 3C_sys를 선형보간 후 곱셈하여 1C_sys 계산. 외삽 금지, 범위 밖은 clamp.",
+    "steps": [
+      {
+        "step": 1,
+        "name": "input_mark_resolution",
+        "details": {
+          "CO": { "space": "Fg", "axis": "long", "rail": "BOTTOM", "value": "x_fg" },
+          "3C": { "space": "Fg", "axis": "short", "rail": "RIGHT", "value": "y_fg" }
+        }
+      },
+      {
+        "step": 2,
+        "name": "interpolation",
+        "rules": {
+          "method": "linear",
+          "clamp": true,
+          "no_extrapolation": true
+        },
+        "mapping_tables": {
+          "CO_sys": {
+            "axis": "x_fg",
+            "data": {
+              "-2.25_y": {
+                "10": 1,
+                "20": 2,
+                "30": 2.5,
+                "40": 3,
+                "50": 3.5,
+                "60": 4,
+                "70": 4.5,
+                "82.25": 5
+              },
+              "x=82.25_y": {
+                "10": 6,
+                "20": 7,
+                "30": 8
+              }
+            }
+          },
+          "3C_sys": {
+            "axis": "y_fg",
+            "x": "82.25",
+            "data": {
+              "40": 4,
+              "33.3": 5,
+              "26.7": 6,
+              "20": 7,
+              "13.3": 8,
+              "6.7": 9,
+              "0": 10
+            }
+          }
+        }
+      },
+      {
+        "step": 3,
+        "name": "multiplication",
+        "formula": "1C_sys = CO_sys * 3C_sys"
+      },
+      {
+        "step": 4,
+        "name": "clamp",
+        "details": {
+          "min": "CO_min * C3_min",
+          "max": "CO_max * C3_max"
+        }
+      },
+      {
+        "step": 5,
+        "name": "output",
+        "output_mark": {
+          "space": "Fg",
+          "rail": "LEFT",
+          "axis": "short",
+          "value": "y_fg (mapped from sys)",
+          "meta": {
+            "formula": "1C_f = CO_f * 3C_f",
+            "clamped": true
+          }
+        }
+      }
+    ]
+  },
+
+  "display_space": {
+    "parallel_frame": {
+      "rule": "x_fg == x_rg",
+      "description": "좌표 투영 없음, 프레임 기준 표시."
+    },
+    "rail_projection": {
+      "offset_fg2rg": 2.25,
+      "rule": "p_Rg = p_Fg + (offset / cos(theta))",
+      "constraints": {
+        "m_min": 0.05,
+        "theta_t_max": 68
+      }
+    }
+  },
+
+  "safety": {
+    "m_min": 0.05,
+    "theta_t_max": 68,
+    "no_extrapolation": true,
+    "offset_fg2rg": 2.25
+  },
+
+  "examples": [
+    {
+      "input": {
+        "CO": "CO_(40,-2.25)_3",
+        "3C": "3C_(82.25,20)_7"
+      },
+      "calc": "1C_sys = 3 × 7 = 21",
+      "output": "1C_(-2.25,21)_21"
+    },
+    {
+      "input": {
+        "CO": "CO_(60,-2.25)_4",
+        "3C": "3C_(82.25,33.3)_5"
+      },
+      "calc": "1C_sys = 4 × 5 = 20",
+      "output": "1C_(-2.25,20)_20"
+    }
+  ]
+}

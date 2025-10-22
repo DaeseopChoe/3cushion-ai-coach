@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "system": "7_system",
+    "note": "회귀 테스트 케이스(각 트랙 3개)"
+  },
+  "cases": [
+    {
+      "track": "B2T_R",
+      "input": {
+        "CO": {
+          "space": "Fg",
+          "x": 40,
+          "y": -2.25,
+          "sys": 3
+        },
+        "C3": {
+          "space": "Rg",
+          "x": 82.25,
+          "y": 20,
+          "sys": 7
+        }
+      },
+      "expect": {
+        "C1": {
+          "space": "Fg",
+          "x": -2.25,
+          "y": 21,
+          "sys": 21
+        },
+        "formula": "1C_sys = CO_sys × 3C_sys"
+      },
+      "hp": "00:00"
+    }
+  ]
+}
